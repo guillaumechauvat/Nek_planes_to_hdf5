@@ -5,12 +5,24 @@ extern crate ndarray;
 use std::io::prelude::*;
 use std::io::BufReader;
 use std::fs::File;
-use std::path::Path;
+use std::path::{Path, PathBuf};
 use clap::{Arg, App};
-use ndarray::{Array, Array3};
+use ndarray::{Array, Array2, Array3};
 
 #[derive(PartialEq, Eq)]
 enum Verbosity {None, Info, Debug}
+
+struct Planes {
+    nplanes: usize,
+    nw: usize,
+    nh: usize,
+    z: Array2<f64>,
+    h: Array2<f64>,
+    u: Array3<f64>,
+    v: Array3<f64>,
+    w: Array3<f64>,
+    p: Array3<f64>
+}
 
 fn main() {
     let matches = App::new("Nek planes to HDF5")
@@ -63,16 +75,16 @@ fn main() {
                 println!("endian: {}, {} planes, {}×{} points", endian, nplanes, nw, nh);
             }
             // now read the data
-            let mut z = Array::zeros((nplanes, nw, nh));
-            let mut h = Array::zeros((nplanes, nw, nh));
+            let mut z = Array::zeros((nw, nh));
+            let mut h = Array::zeros((nw, nh));
             let mut u = Array::zeros((nplanes, nw, nh));
             let mut v = Array::zeros((nplanes, nw, nh));
             let mut w = Array::zeros((nplanes, nw, nh));
             let mut p = Array::zeros((nplanes, nw, nh));
 
             // read geometry
-            read_plane(&mut z, &mut buf_reader, 0, nw, nh);
-            read_plane(&mut h, &mut buf_reader, 0, nw, nh);
+            read_plane_geom(&mut z, &mut buf_reader, nw, nh);
+            read_plane_geom(&mut h, &mut buf_reader, nw, nh);
 
             // read flow
             for plane in 0..nplanes {
@@ -84,12 +96,23 @@ fn main() {
                 read_plane(&mut w, &mut buf_reader, plane, nw, nh);
                 read_plane(&mut p, &mut buf_reader, plane, nw, nh);
             }
-            for i in 0..2 {
-                for j in 0..nh {
-                    println!("{:.9e}, {:.9e} | {:.9e}, {:.9e}, {:.9e} | {:.9e}", z[[0, i, j]], h[[0, i, j]], u[[0, i, j]], v[[0, i, j]], w[[0, i, j]], p[[0, i, j]]);
-                }
-            }
-            println!();
+
+            let planes = Planes {
+                nplanes: nplanes,
+                nw: nw,
+                nh: nh,
+                z: z,
+                h: h,
+                u: u,
+                v: v,
+                w: w,
+                p: p
+            };
+
+            // write results
+            let filename = format!("uint_{:08}.h5", i);
+            let filename = directory.join(filename);
+            save_hdf5(&filename, &planes).unwrap();
         } else {
             return;
         }
@@ -107,9 +130,51 @@ fn read_plane(data: &mut Array3<f64>, buf_reader: &mut BufReader<File>, plane: u
                     //println!("{}: {:.9e}", idx, data[idx]);
                 },
                 Err(e) => {
-                    eprintln!("error reading p at plane {}, point {}, {}: {}", plane, iw, ih, e);
+                    eprintln!("error reading flow at plane {}, point {}, {}: {}", plane, iw, ih, e);
                 }
             }
         }
     }
+}
+
+fn read_plane_geom(data: &mut Array2<f64>, buf_reader: &mut BufReader<File>, nw: usize, nh: usize) {
+    for iw in 0..nw {
+        for ih in 0..nh {
+            let mut buffer = [0; 8];
+            match buf_reader.read_exact(&mut buffer) {
+                Ok(_) => {
+                    data[[iw, ih]] = f64::from_ne_bytes(buffer);
+                },
+                Err(e) => {
+                    eprintln!("error reading geometry at point {}, {}: {}", iw, ih, e);
+                }
+            }
+        }
+    }
+}
+
+fn save_hdf5(filename: &PathBuf, planes: &Planes) -> Result<(), hdf5::Error> {
+    let file = hdf5::File::create(filename).unwrap();
+
+    // create separate groups for geometry and flow params
+    let geom = file.create_group("geometry")?;
+    let flow = file.create_group("flow")?;
+    let (nplanes, nw, nh) = (planes.nplanes, planes.nw, planes.nh);
+
+    // write geometry
+    let z = geom.new_dataset::<f64>().create("z", (nw, nh))?;
+    let h = geom.new_dataset::<f64>().create("h", (nw, nh))?;
+    z.write(&planes.z)?;
+    h.write(&planes.h)?;
+
+    // write flow
+    let u = flow.new_dataset::<f64>().create("u", (nplanes, nw, nh))?;
+    let v = flow.new_dataset::<f64>().create("v", (nplanes, nw, nh))?;
+    let w = flow.new_dataset::<f64>().create("w", (nplanes, nw, nh))?;
+    let p = flow.new_dataset::<f64>().create("p", (nplanes, nw, nh))?;
+    u.write(&planes.u)?;
+    v.write(&planes.v)?;
+    w.write(&planes.w)?;
+    p.write(&planes.p)?;
+    Ok(())
 }

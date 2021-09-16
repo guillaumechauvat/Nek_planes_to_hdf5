@@ -8,4 +8,4 @@ edition = "2018"
 [dependencies]
 hdf5 = "0.7"
 clap = "2.33.3"
-ndarray = "0.15"
+ndarray = "0.14"
