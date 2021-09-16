@@ -1,12 +1,13 @@
 extern crate hdf5;
 extern crate clap;
+extern crate ndarray;
 
 use std::io::prelude::*;
 use std::io::BufReader;
 use std::fs::File;
 use std::path::Path;
-use std::vec::Vec;
 use clap::{Arg, App};
+use ndarray::{Array, Array3};
 
 #[derive(PartialEq, Eq)]
 enum Verbosity {None, Info, Debug}
@@ -62,13 +63,12 @@ fn main() {
                 println!("endian: {}, {} planes, {}×{} points", endian, nplanes, nw, nh);
             }
             // now read the data
-            let npts = nplanes * nw * nh;
-            let mut z = vec![0.; nw*nh];
-            let mut h = vec![0.; nw*nh];
-            let mut u = vec![0.; npts];
-            let mut v = vec![0.; npts];
-            let mut w = vec![0.; npts];
-            let mut p = vec![0.; npts];
+            let mut z = Array::zeros((nplanes, nw, nh));
+            let mut h = Array::zeros((nplanes, nw, nh));
+            let mut u = Array::zeros((nplanes, nw, nh));
+            let mut v = Array::zeros((nplanes, nw, nh));
+            let mut w = Array::zeros((nplanes, nw, nh));
+            let mut p = Array::zeros((nplanes, nw, nh));
 
             // read geometry
             read_plane(&mut z, &mut buf_reader, 0, nw, nh);
@@ -84,8 +84,10 @@ fn main() {
                 read_plane(&mut w, &mut buf_reader, plane, nw, nh);
                 read_plane(&mut p, &mut buf_reader, plane, nw, nh);
             }
-            for i in 0..350 {
-                println!("{:.9e}, {:.9e} | {:.9e}, {:.9e}, {:.9e} | {:.9e}", z[i], h[i], u[i], v[i], w[i], p[i]);
+            for i in 0..2 {
+                for j in 0..nh {
+                    println!("{:.9e}, {:.9e} | {:.9e}, {:.9e}, {:.9e} | {:.9e}", z[[0, i, j]], h[[0, i, j]], u[[0, i, j]], v[[0, i, j]], w[[0, i, j]], p[[0, i, j]]);
+                }
             }
             println!();
         } else {
@@ -95,14 +97,13 @@ fn main() {
 
 }
 
-fn read_plane(data: &mut Vec<f64>, buf_reader: &mut BufReader<File>, plane: usize, nw: usize, nh: usize) {
+fn read_plane(data: &mut Array3<f64>, buf_reader: &mut BufReader<File>, plane: usize, nw: usize, nh: usize) {
     for iw in 0..nw {
         for ih in 0..nh {
             let mut buffer = [0; 8];
             match buf_reader.read_exact(&mut buffer) {
                 Ok(_) => {
-                    let idx = ih + iw * nh + plane * nh * nw;
-                    data[idx] = f64::from_ne_bytes(buffer);
+                    data[[plane, iw, ih]] = f64::from_ne_bytes(buffer);
                     //println!("{}: {:.9e}", idx, data[idx]);
                 },
                 Err(e) => {
