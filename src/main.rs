@@ -98,15 +98,15 @@ fn main() {
             }
 
             let planes = Planes {
-                nplanes: nplanes,
-                nw: nw,
-                nh: nh,
-                z: z,
-                h: h,
-                u: u,
-                v: v,
-                w: w,
-                p: p
+                nplanes,
+                nw,
+                nh,
+                z,
+                h,
+                u,
+                v,
+                w,
+                p
             };
 
             // write results
