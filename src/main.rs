@@ -74,6 +74,14 @@ fn main() {
             if verbosity == Verbosity::Debug {
                 println!("endian: {}, {} planes, {}×{} points", endian, nplanes, nw, nh);
             }
+
+            // endianness support could be added later but this is probably only going to be used on little-endian.
+            // Check anyway to make sure we don't write garbage.
+            assert!(
+                endian == 6.54321f32,
+                "Wrong endianness bytes, expected 6.54321, found {}", endian
+            );
+
             // now read the data
             let mut z = Array::zeros((nw, nh));
             let mut h = Array::zeros((nw, nh));
