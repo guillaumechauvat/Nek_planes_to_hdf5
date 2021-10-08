@@ -9,12 +9,15 @@ use std::path::{Path, PathBuf};
 use clap::{Arg, App};
 use ndarray::{Array, Array2, Array3};
 
-#[derive(PartialEq, Eq)]
+#[derive(PartialEq, Eq, Clone, Copy)]
 enum Verbosity {None, Info, Debug}
+
+#[derive(PartialEq, Eq, Clone, Copy)]
+enum Mode {Flow, Gradient}
 
 struct Planes {
     nplanes: usize,
-    nw: usize,
+    nz: usize,
     nh: usize,
     z: Array2<f64>,
     h: Array2<f64>,
@@ -36,6 +39,10 @@ fn main() {
                           .short("v")
                           .multiple(true)
                           .help("Sets the level of verbosity"))
+                      .arg(Arg::with_name("gradient")
+                          .short("g")
+                          .long("gradient")
+                          .help("Read each group of three consecutive files as (grad u, grad v, grad w)"))
                       .get_matches();
 
     let directory = if let Some(input) = matches.value_of("INPUT") {
@@ -48,6 +55,11 @@ fn main() {
         1 => Verbosity::Info,
         _ => Verbosity::Debug,
     };
+    let mode = if matches.is_present("gradient") {
+        Mode::Gradient
+    } else {
+        Mode::Flow
+    };
 
     // loop over files as long as they exist
     for i in 0.. {
@@ -59,55 +71,35 @@ fn main() {
             if verbosity != Verbosity::None {
                 println!("reading {}", filename.to_str().unwrap());
             }
-            // read header
             let mut buf_reader = BufReader::new(file);
-            let mut header_buf = [0; 4];
-            // read bytes 4 at a time
-            buf_reader.read_exact(&mut header_buf).unwrap();
-            let endian = f32::from_ne_bytes(header_buf);
-            buf_reader.read_exact(&mut header_buf).unwrap();
-            let nplanes = u32::from_ne_bytes(header_buf) as usize;
-            buf_reader.read_exact(&mut header_buf).unwrap();
-            let nw = u32::from_ne_bytes(header_buf) as usize;
-            buf_reader.read_exact(&mut header_buf).unwrap();
-            let nh = u32::from_ne_bytes(header_buf) as usize;
-            if verbosity == Verbosity::Debug {
-                println!("endian: {}, {} planes, {}×{} points", endian, nplanes, nw, nh);
-            }
-
-            // endianness support could be added later but this is probably only going to be used on little-endian.
-            // Check anyway to make sure we don't write garbage.
-            assert!(
-                endian == 6.54321f32,
-                "Wrong endianness bytes, expected 6.54321, found {}", endian
-            );
+            let (nplanes, nz, nh) = read_header(&mut buf_reader, verbosity);
 
             // now read the data
-            let mut z = Array::zeros((nw, nh));
-            let mut h = Array::zeros((nw, nh));
-            let mut u = Array::zeros((nplanes, nw, nh));
-            let mut v = Array::zeros((nplanes, nw, nh));
-            let mut w = Array::zeros((nplanes, nw, nh));
-            let mut p = Array::zeros((nplanes, nw, nh));
+            let mut z = Array::zeros((nz, nh));
+            let mut h = Array::zeros((nz, nh));
+            let mut u = Array::zeros((nplanes, nz, nh));
+            let mut v = Array::zeros((nplanes, nz, nh));
+            let mut w = Array::zeros((nplanes, nz, nh));
+            let mut p = Array::zeros((nplanes, nz, nh));
 
             // read geometry
-            read_plane_geom(&mut z, &mut buf_reader, nw, nh);
-            read_plane_geom(&mut h, &mut buf_reader, nw, nh);
+            read_plane_geom(&mut z, &mut buf_reader, nz, nh);
+            read_plane_geom(&mut h, &mut buf_reader, nz, nh);
 
             // read flow
             for plane in 0..nplanes {
                 if verbosity == Verbosity::Debug {
                     println!("reading plane {}", plane);
                 }
-                read_plane(&mut u, &mut buf_reader, plane, nw, nh);
-                read_plane(&mut v, &mut buf_reader, plane, nw, nh);
-                read_plane(&mut w, &mut buf_reader, plane, nw, nh);
-                read_plane(&mut p, &mut buf_reader, plane, nw, nh);
+                read_plane(&mut u, &mut buf_reader, plane, nz, nh);
+                read_plane(&mut v, &mut buf_reader, plane, nz, nh);
+                read_plane(&mut w, &mut buf_reader, plane, nz, nh);
+                read_plane(&mut p, &mut buf_reader, plane, nz, nh);
             }
 
             let planes = Planes {
                 nplanes,
-                nw,
+                nz,
                 nh,
                 z,
                 h,
@@ -128,8 +120,8 @@ fn main() {
 
 }
 
-fn read_plane(data: &mut Array3<f64>, buf_reader: &mut BufReader<File>, plane: usize, nw: usize, nh: usize) {
-    for iw in 0..nw {
+fn read_plane(data: &mut Array3<f64>, buf_reader: &mut BufReader<File>, plane: usize, nz: usize, nh: usize) {
+    for iw in 0..nz {
         for ih in 0..nh {
             let mut buffer = [0; 8];
             match buf_reader.read_exact(&mut buffer) {
@@ -145,8 +137,8 @@ fn read_plane(data: &mut Array3<f64>, buf_reader: &mut BufReader<File>, plane: u
     }
 }
 
-fn read_plane_geom(data: &mut Array2<f64>, buf_reader: &mut BufReader<File>, nw: usize, nh: usize) {
-    for iw in 0..nw {
+fn read_plane_geom(data: &mut Array2<f64>, buf_reader: &mut BufReader<File>, nz: usize, nh: usize) {
+    for iw in 0..nz {
         for ih in 0..nh {
             let mut buffer = [0; 8];
             match buf_reader.read_exact(&mut buffer) {
@@ -167,11 +159,11 @@ fn save_hdf5(filename: &PathBuf, planes: &Planes) -> Result<(), hdf5::Error> {
     // create separate groups for geometry and flow params
     let geom = file.create_group("geometry")?;
     let flow = file.create_group("flow")?;
-    let (nplanes, nw, nh) = (planes.nplanes, planes.nw, planes.nh);
+    let (nplanes, nz, nh) = (planes.nplanes, planes.nz, planes.nh);
 
     // write geometry
-    let z = geom.new_dataset::<f64>().create("z", (nw, nh))?;
-    let h = geom.new_dataset::<f64>().create("h", (nw, nh))?;
+    let z = geom.new_dataset::<f64>().create("z", (nz, nh))?;
+    let h = geom.new_dataset::<f64>().create("h", (nz, nh))?;
     z.write(&planes.z)?;
     h.write(&planes.h)?;
 
@@ -193,13 +185,44 @@ fn save_hdf5(filename: &PathBuf, planes: &Planes) -> Result<(), hdf5::Error> {
     ny0.write(&ny00)?;
 
     // write flow
-    let u = flow.new_dataset::<f64>().create("u", (nplanes, nw, nh))?;
-    let v = flow.new_dataset::<f64>().create("v", (nplanes, nw, nh))?;
-    let w = flow.new_dataset::<f64>().create("w", (nplanes, nw, nh))?;
-    let p = flow.new_dataset::<f64>().create("p", (nplanes, nw, nh))?;
+    let u = flow.new_dataset::<f64>().create("u", (nplanes, nz, nh))?;
+    let v = flow.new_dataset::<f64>().create("v", (nplanes, nz, nh))?;
+    let w = flow.new_dataset::<f64>().create("w", (nplanes, nz, nh))?;
+    let p = flow.new_dataset::<f64>().create("p", (nplanes, nz, nh))?;
     u.write(&planes.u)?;
     v.write(&planes.v)?;
     w.write(&planes.w)?;
     p.write(&planes.p)?;
     Ok(())
+}
+
+fn read_header(buf_reader: &mut BufReader<File>, verbosity: Verbosity) -> (usize, usize, usize) {
+    /*
+    Read header and returns dimensions.
+    Panics if the endianness bytes are incorrect.
+    */
+        // read header
+        let mut header_buf = [0; 4];
+        // read bytes 4 at a time
+        buf_reader.read_exact(&mut header_buf).unwrap();
+        let endian = f32::from_ne_bytes(header_buf);
+
+        // endianness support could be added later but this is probably only going to be used on little-endian.
+        // Check anyway to make sure we don't write garbage.
+        assert!(
+            endian == 6.54321f32,
+            "Wrong endianness bytes, expected 6.54321, found {}", endian
+        );
+
+        buf_reader.read_exact(&mut header_buf).unwrap();
+        let nplanes = u32::from_ne_bytes(header_buf) as usize;
+        buf_reader.read_exact(&mut header_buf).unwrap();
+        let nz = u32::from_ne_bytes(header_buf) as usize;
+        buf_reader.read_exact(&mut header_buf).unwrap();
+        let nh = u32::from_ne_bytes(header_buf) as usize;
+        if verbosity == Verbosity::Debug {
+            println!("endian: {}, {} planes, {}×{} points", endian, nplanes, nz, nh);
+        }
+
+        (nplanes, nz, nh)
 }
