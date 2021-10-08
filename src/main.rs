@@ -63,52 +63,7 @@ fn main() {
 
     // loop over files as long as they exist
     for i in 0.. {
-        let filename = format!("uint_{:08}.dat", i);
-        let filename = directory.join(filename);
-
-        // open the file; return if not found
-        if let Ok(file) = File::open(&filename) {
-            if verbosity != Verbosity::None {
-                println!("reading {}", filename.to_str().unwrap());
-            }
-            let mut buf_reader = BufReader::new(file);
-            let (nplanes, nz, nh) = read_header(&mut buf_reader, verbosity);
-
-            // now read the data
-            let mut z = Array::zeros((nz, nh));
-            let mut h = Array::zeros((nz, nh));
-            let mut u = Array::zeros((nplanes, nz, nh));
-            let mut v = Array::zeros((nplanes, nz, nh));
-            let mut w = Array::zeros((nplanes, nz, nh));
-            let mut p = Array::zeros((nplanes, nz, nh));
-
-            // read geometry
-            read_plane_geom(&mut z, &mut buf_reader, nz, nh);
-            read_plane_geom(&mut h, &mut buf_reader, nz, nh);
-
-            // read flow
-            for plane in 0..nplanes {
-                if verbosity == Verbosity::Debug {
-                    println!("reading plane {}", plane);
-                }
-                read_plane(&mut u, &mut buf_reader, plane, nz, nh);
-                read_plane(&mut v, &mut buf_reader, plane, nz, nh);
-                read_plane(&mut w, &mut buf_reader, plane, nz, nh);
-                read_plane(&mut p, &mut buf_reader, plane, nz, nh);
-            }
-
-            let planes = Planes {
-                nplanes,
-                nz,
-                nh,
-                z,
-                h,
-                u,
-                v,
-                w,
-                p
-            };
-
+        if let Some(planes) = read_file(directory, i, 4, verbosity) {
             // write results
             let filename = format!("uint_{:08}.h5", i);
             let filename = directory.join(filename);
@@ -225,4 +180,63 @@ fn read_header(buf_reader: &mut BufReader<File>, verbosity: Verbosity) -> (usize
         }
 
         (nplanes, nz, nh)
+}
+
+fn read_file(directory: &Path, i: u32, nvar: u32, verbosity: Verbosity) -> Option<Planes> {
+    let filename = format!("uint_{:08}.dat", i);
+    let filename = directory.join(filename);
+
+    // open the file; return if not found
+    if let Ok(file) = File::open(&filename) {
+        if verbosity != Verbosity::None {
+            println!("reading {}", filename.to_str().unwrap());
+        }
+        let mut buf_reader = BufReader::new(file);
+        let (nplanes, nz, nh) = read_header(&mut buf_reader, verbosity);
+
+        // allocate arrays
+        let mut z = Array::zeros((nz, nh));
+        let mut h = Array::zeros((nz, nh));
+        let mut u = Array::zeros((nplanes, nz, nh));
+        let mut v = Array::zeros((nplanes, nz, nh));
+        let mut w = Array::zeros((nplanes, nz, nh));
+        let mut p = Array::zeros((nplanes, nz, nh));
+
+        // read geometry
+        read_plane_geom(&mut z, &mut buf_reader, nz, nh);
+        read_plane_geom(&mut h, &mut buf_reader, nz, nh);
+
+        // read flow
+        for plane in 0..nplanes {
+            if verbosity == Verbosity::Debug {
+                println!("reading plane {}", plane);
+            }
+            if nvar >= 1 {
+                read_plane(&mut u, &mut buf_reader, plane, nz, nh);
+            }
+            if nvar >= 2 {
+                read_plane(&mut v, &mut buf_reader, plane, nz, nh);
+            }
+            if nvar >= 3 {
+                read_plane(&mut w, &mut buf_reader, plane, nz, nh);
+            }
+            if nvar >= 4 {
+                read_plane(&mut p, &mut buf_reader, plane, nz, nh);
+            }
+        }
+
+        Some(Planes {
+            nplanes,
+            nz,
+            nh,
+            z,
+            h,
+            u,
+            v,
+            w,
+            p
+        })
+    } else {
+        None
+    }
 }
