@@ -53,12 +53,12 @@ fn main() {
     for i in 0.. {
         let filename = format!("uint_{:08}.dat", i);
         let filename = directory.join(filename);
-        if verbosity != Verbosity::None {
-            println!("reading {}", filename.to_str().unwrap());
-        }
 
         // open the file; return if not found
-        if let Ok(file) = File::open(filename) {
+        if let Ok(file) = File::open(&filename) {
+            if verbosity != Verbosity::None {
+                println!("reading {}", filename.to_str().unwrap());
+            }
             // read header
             let mut buf_reader = BufReader::new(file);
             let mut header_buf = [0; 4];
