@@ -99,21 +99,23 @@ fn main() {
                 }
             },
             Mode::FullGradients => {
-                if let Some(du) = read_file(directory, 5*i, verbosity) {
+                if let Some(u) = read_file(directory, 6*i, verbosity) {
                     // we can assume the other files are there:
                     // There should be a multiple of 5 files, otherwise it's a user error and we can just panic.
-                    let dv = read_file(directory, 5*i + 1, verbosity)
+                    let du = read_file(directory, 6*i + 1, verbosity)
                              .expect("there should be a multiple of 5 files while reading full gradients!");
-                    let dw = read_file(directory, 5*i + 2, verbosity)
+                    let dv = read_file(directory, 6*i + 2, verbosity)
                              .expect("there should be a multiple of 5 files while reading full gradients!");
-                    let laplacian = read_file(directory, 5*i + 3, verbosity)
+                    let dw = read_file(directory, 6*i + 3, verbosity)
                              .expect("there should be a multiple of 5 files while reading full gradients!");
-                    let lambda2 = read_file(directory, 5*i + 4, verbosity)
+                    let laplacian = read_file(directory, 6*i + 4, verbosity)
+                             .expect("there should be a multiple of 5 files while reading full gradients!");
+                    let lambda2 = read_file(directory, 6*i + 5, verbosity)
                              .expect("there should be a multiple of 5 files while reading full gradients!");
                     // write results
-                    let filename = format!("gradint_{:08}.h5", i);
+                    let filename = format!("fullgradint_{:08}.h5", i);
                     let filename = directory.join(filename);
-                    save_hdf5_full_gradients(&filename, &du, &dv, &dw, &laplacian, &lambda2).unwrap();
+                    save_hdf5_full_gradients(&filename, &u, &du, &dv, &dw, &laplacian, &lambda2).unwrap();
                 } else {
                     return;
                 }
@@ -219,7 +221,7 @@ fn save_hdf5_gradient(filename: &PathBuf, du: &Planes, dv: &Planes, dw: &Planes)
     Ok(())
 }
 
-fn save_hdf5_full_gradients(filename: &PathBuf, du: &Planes, dv: &Planes, dw: &Planes, laplacian: &Planes, lambda2: &Planes) -> Result<(), hdf5::Error> {
+fn save_hdf5_full_gradients(filename: &PathBuf, vel: &Planes, du: &Planes, dv: &Planes, dw: &Planes, laplacian: &Planes, lambda2: &Planes) -> Result<(), hdf5::Error> {
     let file = hdf5::File::create(filename).unwrap();
 
     // create separate groups for geometry and flow params
@@ -235,6 +237,9 @@ fn save_hdf5_full_gradients(filename: &PathBuf, du: &Planes, dv: &Planes, dw: &P
     write_wall_geometry(&geom)?;
 
     // write flow gradients
+    let u = flow.new_dataset::<f64>().create("u", (nplanes, nz, nh))?;
+    let v = flow.new_dataset::<f64>().create("v", (nplanes, nz, nh))?;
+    let w = flow.new_dataset::<f64>().create("w", (nplanes, nz, nh))?;
     let ux = flow.new_dataset::<f64>().create("ux", (nplanes, nz, nh))?;
     let uy = flow.new_dataset::<f64>().create("uy", (nplanes, nz, nh))?;
     let uz = flow.new_dataset::<f64>().create("uz", (nplanes, nz, nh))?;
@@ -248,6 +253,9 @@ fn save_hdf5_full_gradients(filename: &PathBuf, du: &Planes, dv: &Planes, dw: &P
     let lapl_v = flow.new_dataset::<f64>().create("d2 v", (nplanes, nz, nh))?;
     let lapl_w = flow.new_dataset::<f64>().create("d2 w", (nplanes, nz, nh))?;
     let lam2 = flow.new_dataset::<f64>().create("lambda_2", (nplanes, nz, nh))?;
+    u.write(&vel.u)?;
+    v.write(&vel.v)?;
+    w.write(&vel.w)?;
     ux.write(&du.u)?;
     uy.write(&du.v)?;
     uz.write(&du.w)?;
