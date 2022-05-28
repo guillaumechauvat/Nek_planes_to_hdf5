@@ -336,7 +336,8 @@ fn save_hdf5_full_gradients(
 
     // create separate groups for geometry and flow params
     let geom = file.create_group("geometry")?;
-    let flow = file.create_group("gradient")?;
+    let flow = file.create_group("flow")?;
+    let gradient = file.create_group("gradient")?;
     let (nplanes, nz, nh) = (du.nplanes, du.nz, du.nh);
 
     // write geometry
@@ -359,52 +360,52 @@ fn save_hdf5_full_gradients(
         .new_dataset::<f64>()
         .shape((nplanes, nz, nh))
         .create("w")?;
-    let ux = flow
+    let ux = gradient
         .new_dataset::<f64>()
         .shape((nplanes, nz, nh))
         .create("ux")?;
-    let uy = flow
+    let uy = gradient
         .new_dataset::<f64>()
         .shape((nplanes, nz, nh))
         .create("uy")?;
-    let uz = flow
+    let uz = gradient
         .new_dataset::<f64>()
         .shape((nplanes, nz, nh))
         .create("uz")?;
-    let vx = flow
+    let vx = gradient
         .new_dataset::<f64>()
         .shape((nplanes, nz, nh))
         .create("vx")?;
-    let vy = flow
+    let vy = gradient
         .new_dataset::<f64>()
         .shape((nplanes, nz, nh))
         .create("vy")?;
-    let vz = flow
+    let vz = gradient
         .new_dataset::<f64>()
         .shape((nplanes, nz, nh))
         .create("vz")?;
-    let wx = flow
+    let wx = gradient
         .new_dataset::<f64>()
         .shape((nplanes, nz, nh))
         .create("wx")?;
-    let wy = flow
+    let wy = gradient
         .new_dataset::<f64>()
         .shape((nplanes, nz, nh))
         .create("wy")?;
-    let wz = flow
+    let wz = gradient
         .new_dataset::<f64>()
         .shape((nplanes, nz, nh))
         .create("wz")?;
     if let Some(laplacian) = laplacian {
-        let lapl_u = flow
+        let lapl_u = gradient
             .new_dataset::<f64>()
             .shape((nplanes, nz, nh))
             .create("d2 u")?;
-        let lapl_v = flow
+        let lapl_v = gradient
             .new_dataset::<f64>()
             .shape((nplanes, nz, nh))
             .create("d2 v")?;
-        let lapl_w = flow
+        let lapl_w = gradient
             .new_dataset::<f64>()
             .shape((nplanes, nz, nh))
             .create("d2 w")?;
@@ -413,7 +414,7 @@ fn save_hdf5_full_gradients(
         lapl_w.write(&laplacian.w)?;
     }
     if let Some(lambda2) = lambda2 {
-        let lam2 = flow
+        let lam2 = gradient
             .new_dataset::<f64>()
             .shape((nplanes, nz, nh))
             .create("lambda_2")?;
