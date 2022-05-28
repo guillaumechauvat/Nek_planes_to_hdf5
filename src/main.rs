@@ -56,10 +56,10 @@ fn main() {
                           .short("G")
                           .long("full-gradients")
                           .help("Read each group of five consecutive files as (grad u, grad v, grad w, laplacian, lambda2)"))
-                      .arg(Arg::with_name("flow and gradient"))
+                      .arg(Arg::with_name("flow and gradient")
                           .short("a")
                           .long("flow-gradient")
-                          .help("Read each group of four consecutive files as ((u, v, w), grad u, grad v, grad w)")
+                          .help("Read each group of four consecutive files as ((u, v, w), grad u, grad v, grad w)"))
                       .get_matches();
 
     let directory = if let Some(input) = matches.value_of("INPUT") {
@@ -137,8 +137,16 @@ fn main() {
                     // write results
                     let filename = format!("fullgradint_{:08}.h5", i);
                     let filename = directory.join(filename);
-                    save_hdf5_full_gradients(&filename, &u, &du, &dv, &dw, &laplacian, &lambda2)
-                        .unwrap();
+                    save_hdf5_full_gradients(
+                        &filename,
+                        &u,
+                        &du,
+                        &dv,
+                        &dw,
+                        Some(&laplacian),
+                        Some(&lambda2),
+                    )
+                    .unwrap();
                 } else {
                     return;
                 }
@@ -156,7 +164,7 @@ fn main() {
                     // write results
                     let filename = format!("gradint_{:08}.h5", i);
                     let filename = directory.join(filename);
-                    save_hdf5_full_gradient(&filename, &u, &du, &dv, &dw, None, None).unwrap();
+                    save_hdf5_full_gradients(&filename, &u, &du, &dv, &dw, None, None).unwrap();
                 } else {
                     return;
                 }
