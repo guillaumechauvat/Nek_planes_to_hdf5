@@ -224,17 +224,29 @@ fn save_hdf5_flow(filename: &PathBuf, planes: &Planes) -> Result<(), hdf5::Error
     let (nplanes, nz, nh) = (planes.nplanes, planes.nz, planes.nh);
 
     // write geometry
-    let z = geom.new_dataset::<f64>().create("z", (nz, nh))?;
-    let h = geom.new_dataset::<f64>().create("h", (nz, nh))?;
+    let z = geom.new_dataset::<f64>().shape((nz, nh)).create("z")?;
+    let h = geom.new_dataset::<f64>().shape((nz, nh)).create("h")?;
     z.write(&planes.z)?;
     h.write(&planes.h)?;
     write_wall_geometry(&geom)?;
 
     // write flow
-    let u = flow.new_dataset::<f64>().create("u", (nplanes, nz, nh))?;
-    let v = flow.new_dataset::<f64>().create("v", (nplanes, nz, nh))?;
-    let w = flow.new_dataset::<f64>().create("w", (nplanes, nz, nh))?;
-    let p = flow.new_dataset::<f64>().create("p", (nplanes, nz, nh))?;
+    let u = flow
+        .new_dataset::<f64>()
+        .shape((nplanes, nz, nh))
+        .create("u")?;
+    let v = flow
+        .new_dataset::<f64>()
+        .shape((nplanes, nz, nh))
+        .create("v")?;
+    let w = flow
+        .new_dataset::<f64>()
+        .shape((nplanes, nz, nh))
+        .create("w")?;
+    let p = flow
+        .new_dataset::<f64>()
+        .shape((nplanes, nz, nh))
+        .create("p")?;
     u.write(&planes.u)?;
     v.write(&planes.v)?;
     w.write(&planes.w)?;
@@ -256,22 +268,49 @@ fn save_hdf5_gradient(
     let (nplanes, nz, nh) = (du.nplanes, du.nz, du.nh);
 
     // write geometry
-    let z = geom.new_dataset::<f64>().create("z", (nz, nh))?;
-    let h = geom.new_dataset::<f64>().create("h", (nz, nh))?;
+    let z = geom.new_dataset::<f64>().shape((nz, nh)).create("z")?;
+    let h = geom.new_dataset::<f64>().shape((nz, nh)).create("h")?;
     z.write(&du.z)?;
     h.write(&du.h)?;
     write_wall_geometry(&geom)?;
 
     // write flow gradients
-    let ux = flow.new_dataset::<f64>().create("ux", (nplanes, nz, nh))?;
-    let uy = flow.new_dataset::<f64>().create("uy", (nplanes, nz, nh))?;
-    let uz = flow.new_dataset::<f64>().create("uz", (nplanes, nz, nh))?;
-    let vx = flow.new_dataset::<f64>().create("vx", (nplanes, nz, nh))?;
-    let vy = flow.new_dataset::<f64>().create("vy", (nplanes, nz, nh))?;
-    let vz = flow.new_dataset::<f64>().create("vz", (nplanes, nz, nh))?;
-    let wx = flow.new_dataset::<f64>().create("wx", (nplanes, nz, nh))?;
-    let wy = flow.new_dataset::<f64>().create("wy", (nplanes, nz, nh))?;
-    let wz = flow.new_dataset::<f64>().create("wz", (nplanes, nz, nh))?;
+    let ux = flow
+        .new_dataset::<f64>()
+        .shape((nplanes, nz, nh))
+        .create("ux")?;
+    let uy = flow
+        .new_dataset::<f64>()
+        .shape((nplanes, nz, nh))
+        .create("uy")?;
+    let uz = flow
+        .new_dataset::<f64>()
+        .shape((nplanes, nz, nh))
+        .create("uz")?;
+    let vx = flow
+        .new_dataset::<f64>()
+        .shape((nplanes, nz, nh))
+        .create("vx")?;
+    let vy = flow
+        .new_dataset::<f64>()
+        .shape((nplanes, nz, nh))
+        .create("vy")?;
+    let vz = flow
+        .new_dataset::<f64>()
+        .shape((nplanes, nz, nh))
+        .create("vz")?;
+    let wx = flow
+        .new_dataset::<f64>()
+        .shape((nplanes, nz, nh))
+        .create("wx")?;
+    let wy = flow
+        .new_dataset::<f64>()
+        .shape((nplanes, nz, nh))
+        .create("wy")?;
+    let wz = flow
+        .new_dataset::<f64>()
+        .shape((nplanes, nz, nh))
+        .create("wz")?;
     ux.write(&du.u)?;
     uy.write(&du.v)?;
     uz.write(&du.w)?;
@@ -301,43 +340,83 @@ fn save_hdf5_full_gradients(
     let (nplanes, nz, nh) = (du.nplanes, du.nz, du.nh);
 
     // write geometry
-    let z = geom.new_dataset::<f64>().create("z", (nz, nh))?;
-    let h = geom.new_dataset::<f64>().create("h", (nz, nh))?;
+    let z = geom.new_dataset::<f64>().shape((nz, nh)).create("z")?;
+    let h = geom.new_dataset::<f64>().shape((nz, nh)).create("h")?;
     z.write(&du.z)?;
     h.write(&du.h)?;
     write_wall_geometry(&geom)?;
 
     // write flow gradients
-    let u = flow.new_dataset::<f64>().create("u", (nplanes, nz, nh))?;
-    let v = flow.new_dataset::<f64>().create("v", (nplanes, nz, nh))?;
-    let w = flow.new_dataset::<f64>().create("w", (nplanes, nz, nh))?;
-    let ux = flow.new_dataset::<f64>().create("ux", (nplanes, nz, nh))?;
-    let uy = flow.new_dataset::<f64>().create("uy", (nplanes, nz, nh))?;
-    let uz = flow.new_dataset::<f64>().create("uz", (nplanes, nz, nh))?;
-    let vx = flow.new_dataset::<f64>().create("vx", (nplanes, nz, nh))?;
-    let vy = flow.new_dataset::<f64>().create("vy", (nplanes, nz, nh))?;
-    let vz = flow.new_dataset::<f64>().create("vz", (nplanes, nz, nh))?;
-    let wx = flow.new_dataset::<f64>().create("wx", (nplanes, nz, nh))?;
-    let wy = flow.new_dataset::<f64>().create("wy", (nplanes, nz, nh))?;
-    let wz = flow.new_dataset::<f64>().create("wz", (nplanes, nz, nh))?;
-    if let laplacian = Some(laplacian) {
+    let u = flow
+        .new_dataset::<f64>()
+        .shape((nplanes, nz, nh))
+        .create("u")?;
+    let v = flow
+        .new_dataset::<f64>()
+        .shape((nplanes, nz, nh))
+        .create("v")?;
+    let w = flow
+        .new_dataset::<f64>()
+        .shape((nplanes, nz, nh))
+        .create("w")?;
+    let ux = flow
+        .new_dataset::<f64>()
+        .shape((nplanes, nz, nh))
+        .create("ux")?;
+    let uy = flow
+        .new_dataset::<f64>()
+        .shape((nplanes, nz, nh))
+        .create("uy")?;
+    let uz = flow
+        .new_dataset::<f64>()
+        .shape((nplanes, nz, nh))
+        .create("uz")?;
+    let vx = flow
+        .new_dataset::<f64>()
+        .shape((nplanes, nz, nh))
+        .create("vx")?;
+    let vy = flow
+        .new_dataset::<f64>()
+        .shape((nplanes, nz, nh))
+        .create("vy")?;
+    let vz = flow
+        .new_dataset::<f64>()
+        .shape((nplanes, nz, nh))
+        .create("vz")?;
+    let wx = flow
+        .new_dataset::<f64>()
+        .shape((nplanes, nz, nh))
+        .create("wx")?;
+    let wy = flow
+        .new_dataset::<f64>()
+        .shape((nplanes, nz, nh))
+        .create("wy")?;
+    let wz = flow
+        .new_dataset::<f64>()
+        .shape((nplanes, nz, nh))
+        .create("wz")?;
+    if let Some(laplacian) = laplacian {
         let lapl_u = flow
             .new_dataset::<f64>()
-            .create("d2 u", (nplanes, nz, nh))?;
+            .shape((nplanes, nz, nh))
+            .create("d2 u")?;
         let lapl_v = flow
             .new_dataset::<f64>()
-            .create("d2 v", (nplanes, nz, nh))?;
+            .shape((nplanes, nz, nh))
+            .create("d2 v")?;
         let lapl_w = flow
             .new_dataset::<f64>()
-            .create("d2 w", (nplanes, nz, nh))?;
+            .shape((nplanes, nz, nh))
+            .create("d2 w")?;
         lapl_u.write(&laplacian.u)?;
         lapl_v.write(&laplacian.v)?;
         lapl_w.write(&laplacian.w)?;
     }
-    if let lambda2 = Some(lambda2) {
+    if let Some(lambda2) = lambda2 {
         let lam2 = flow
             .new_dataset::<f64>()
-            .create("lambda_2", (nplanes, nz, nh))?;
+            .shape((nplanes, nz, nh))
+            .create("lambda_2")?;
         lam2.write(&lambda2.u)?; // other values unused and ignored for now
     }
     u.write(&vel.u)?;
@@ -357,13 +436,13 @@ fn save_hdf5_full_gradients(
 
 fn write_wall_geometry(h5_geom: &hdf5::Group) -> Result<(), hdf5::Error> {
     // add hardcoded x/c locations for reference
-    let xc0 = vec![
+    let xc0: Vec<f64> = vec![
         0.145, 0.15286, 0.16072, 0.16858, 0.17644, 0.18032, 0.1881, 0.1919, 0.19583, 0.198, 0.199,
         0.1997, 0.201, 0.202, 0.203, 0.20359, 0.205, 0.2075, 0.2114, 0.2153, 0.2191, 0.223, 0.2269,
         0.2308, 0.2386, 0.2464, 0.26476, 0.28312, 0.30148, 0.31984, 0.3382, 0.35656, 0.37492,
         0.39328, 0.41164, 0.43, 0.44836, 0.46672, 0.48508,
     ];
-    let x00 = vec![
+    let x00: Vec<f64> = vec![
         0.13445711, 0.14160301, 0.14874611, 0.15588668, 0.16302493, 0.16654776, 0.17360974,
         0.17705812, 0.18062388, 0.18259251, 0.18349966, 0.18413464, 0.18531385, 0.18622089,
         0.1871279, 0.18766303, 0.18894183, 0.19120906, 0.19474557, 0.19828162, 0.20172656,
@@ -371,7 +450,7 @@ fn write_wall_geometry(h5_geom: &hdf5::Group) -> Result<(), hdf5::Error> {
         0.27630862, 0.29290621, 0.30949487, 0.32607525, 0.34264764, 0.35921075, 0.37576532,
         0.39231124, 0.40884687, 0.42537378, 0.44189054,
     ];
-    let y00 = vec![
+    let y00: Vec<f64> = vec![
         0.0706838, 0.07154527, 0.07236408, 0.07314439, 0.07388938, 0.07424376, 0.07492624,
         0.07524568, 0.07556696, 0.07574062, 0.07581978, 0.07587488, 0.07597653, 0.07605414,
         0.07613124, 0.0761765, 0.07628398, 0.07647224, 0.07676018, 0.07704117, 0.07730832,
@@ -379,7 +458,7 @@ fn write_wall_geometry(h5_geom: &hdf5::Group) -> Result<(), hdf5::Error> {
         0.08156768, 0.08214457, 0.08258564, 0.08290063, 0.08309419, 0.08314658, 0.08306903,
         0.08285979, 0.0824942, 0.08199589, 0.08134318,
     ];
-    let nx00 = vec![
+    let nx00: Vec<f64> = vec![
         -0.1226994,
         -0.11670294,
         -0.11115984,
@@ -420,7 +499,7 @@ fn write_wall_geometry(h5_geom: &hdf5::Group) -> Result<(), hdf5::Error> {
         0.03438209,
         0.04467383,
     ];
-    let ny00 = vec![
+    let ny00: Vec<f64> = vec![
         0.99244388, 0.99316687, 0.99380254, 0.99434466, 0.99485131, 0.99510522, 0.99561763,
         0.99585229, 0.99607433, 0.99618838, 0.99623895, 0.99627363, 0.99633646, 0.99638342,
         0.99642922, 0.9964557, 0.99651737, 0.996622, 0.99678036, 0.99693378, 0.99707859, 0.9972225,
@@ -428,11 +507,26 @@ fn write_wall_geometry(h5_geom: &hdf5::Group) -> Result<(), hdf5::Error> {
         0.99953222, 0.99974285, 0.99988106, 0.99997098, 0.99999942, 0.99996592, 0.99984707,
         0.99965416, 0.99940876, 0.99900163,
     ];
-    let xc = h5_geom.new_dataset::<f64>().create("x_c", (xc0.len(),))?;
-    let x0 = h5_geom.new_dataset::<f64>().create("x0", (x00.len(),))?;
-    let y0 = h5_geom.new_dataset::<f64>().create("y0", (y00.len(),))?;
-    let nx0 = h5_geom.new_dataset::<f64>().create("nx0", (nx00.len(),))?;
-    let ny0 = h5_geom.new_dataset::<f64>().create("ny0", (ny00.len(),))?;
+    let xc = h5_geom
+        .new_dataset::<f64>()
+        .shape((xc0.len(),))
+        .create("x_c")?;
+    let x0 = h5_geom
+        .new_dataset::<f64>()
+        .shape((x00.len(),))
+        .create("x0")?;
+    let y0 = h5_geom
+        .new_dataset::<f64>()
+        .shape((y00.len(),))
+        .create("y0")?;
+    let nx0 = h5_geom
+        .new_dataset::<f64>()
+        .shape((nx00.len(),))
+        .create("nx0")?;
+    let ny0 = h5_geom
+        .new_dataset::<f64>()
+        .shape((ny00.len(),))
+        .create("ny0")?;
     xc.write(&xc0)?;
     x0.write(&x00)?;
     y0.write(&y00)?;
